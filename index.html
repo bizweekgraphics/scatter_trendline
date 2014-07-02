@@ -3,7 +3,7 @@
 <style>
 
 body {
-  font: 10px sans-serif;
+  font: 12px helvetica;
 }
 
 .axis path,
@@ -17,15 +17,26 @@ body {
   stroke: #000;
 }
 
+div.tooltip {
+  position: absolute;
+  padding: 2px; 
+  width: 230px;
+  height: 40px;
+  pointer-events: none;
+  border-radius: 8px;
+  background: #DDDFE3
+}
+
 </style>
+<h2 style="font-size:20px">World Cup Ratings</h2>
 <body>
 <script src="http://d3js.org/d3.v3.min.js"></script>
 <script>
 
 var format = d3.time.format("%m/%d/%y");
 
-var margin = {top: 20, right: 20, bottom: 30, left: 40},
-    width = 960 - margin.left - margin.right,
+var margin = {top: 40, right: 20, bottom: 30, left: 40},
+    width = 970 - margin.left - margin.right,
     height = 500 - margin.top - margin.bottom;
 
 
@@ -55,6 +66,9 @@ var svg = d3.select("body").append("svg")
   .append("g")
     .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
+var tooltip = d3.select("body").append("div")
+    .attr("class", "tooltip")
+    .style("opacity", 0);
 
 d3.tsv("ratings.tsv", function(error, data) {
   data.forEach(function(d) {
@@ -83,11 +97,11 @@ d3.tsv("ratings.tsv", function(error, data) {
       .call(yAxis)
     .append("text")
       .attr("class", "label")
-      .attr("transform", "rotate(-90)")
-      .attr("y", 6)
+      .attr("x", -40)
+      .attr("y", -20)
       .attr("dy", ".71em")
-      .style("text-anchor", "end")
-      .text("Viewers (in thousands)")
+      .style("text-anchor", "start")
+      .html("Viewers (in thousands)")
 
   svg.selectAll(".dot")
       .data(data)
@@ -96,7 +110,21 @@ d3.tsv("ratings.tsv", function(error, data) {
       .attr("r", 3.5)
       .attr("cx", function(d) { return x(d.date); })
       .attr("cy", function(d) { return y(d.value); })
-      .style("fill", function(d) { return color(d.channel); });
+      .style("fill", function(d) { return color(d.channel); })
+      .on("mouseover", function(d) {
+          tooltip.transition()
+               .duration(200)
+               .style("opacity", .9);
+          tooltip.html(d["match"]+"<br/>on "+d.channel+ "<br/>" + format(d.date) 
+	        + ", " + d.value + " Viewers (in thousands)")
+               .style("left", (d3.event.pageX+10) + "px")
+               .style("top", (d3.event.pageY - 28) + "px");
+      })
+      .on("mouseout", function(d) {
+          tooltip.transition()
+               .duration(500)
+               .style("opacity", 0);
+      });
 
   
   /*ABC trendline*/
@@ -131,18 +159,19 @@ d3.tsv("ratings.tsv", function(error, data) {
 		.attr("x2", function(d) { return x(d[2]); })
 		.attr("y2", function(d) { return y(d[3]); })
 		.attr("stroke", "#FF00FF")
+		.attr("stroke-dasharray", 5)
 		.attr("stroke-width", 1);
   
   /*UNI trendline*/
   var xLabelsA = d3.extent(data,function (d) {
-  	if(d.channel == "UNI"){
+  	if(d.channel == "Univision"){
   	return d.date; }
   	});
   //var xLabels = d3.extent(data, function(d) { return d.date });
     
   var xSeriesA = d3.range(1, xLabelsA.length+1);
   var ySeriesA = d3.extent(data,function(d) { 
-  	if(d.channel == "UNI"){
+  	if(d.channel == "Univision"){
   	return d.value; }
   	});
   
@@ -164,6 +193,7 @@ d3.tsv("ratings.tsv", function(error, data) {
 		.attr("x2", function(d) { return x(d[2]); })
 		.attr("y2", function(d) { return y(d[3]); })
 		.attr("stroke", "#00FFFF")
+		.attr("stroke-dasharray", 5)
 		.attr("stroke-width", 1);
 		
   /*ESPN trendline*/
@@ -197,6 +227,7 @@ d3.tsv("ratings.tsv", function(error, data) {
 		.attr("x2", function(d) { return x(d[2]); })
 		.attr("y2", function(d) { return y(d[3]); })
 		.attr("stroke", "#ED9C00")
+		.attr("stroke-dasharray", 5)
 		.attr("stroke-width", 1);
   
   /*legend*/
@@ -207,16 +238,16 @@ d3.tsv("ratings.tsv", function(error, data) {
       .attr("transform", function(d, i) { return "translate(0," + i * 20 + ")"; });
 
   legend.append("rect")
-      .attr("x", 90)
+      .attr("x", 110)
       .attr("width", 18)
       .attr("height", 18)
       .style("fill", color);
 
   legend.append("text")
-      .attr("x", 85)
+      .attr("x", 130)
       .attr("y", 9)
       .attr("dy", ".35em")
-      .style("text-anchor", "end")
+      .style("text-anchor", "start")
       .text(function(d) { return d; });
 
 });
@@ -244,3 +275,4 @@ function leastSquares(xSeries, ySeries) {
 
 </script>
 </body>
+<footer style="text-align:right">GRAPHIC BY BLOOMBERG BUSINESSWEEK; DATA: ??????</footer>
