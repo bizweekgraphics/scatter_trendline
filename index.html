@@ -36,7 +36,8 @@ var x = d3.time.scale()
 var y = d3.scale.linear()
     .range([height, 0]);
 
-var color = d3.scale.category10();
+ var color = d3.scale.ordinal()
+          .range(["#FF00FF","#00FFFF","ED9C00"]);
 
 var xAxis = d3.svg.axis()
     .scale(x)
@@ -53,37 +54,6 @@ var svg = d3.select("body").append("svg")
     .attr("height", height + margin.top + margin.bottom)
   .append("g")
     .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-
-function getCorrelation(xArray, yArray) {
-  function sum(m, v) {return m + v;}
-  function sumSquares(m, v) {return m + v * v;}
-  function filterNaN(m, v, i) {isNaN(v) ? null : m.push(i); return m;}
-
-  // clean the data (because we know that some values are missing)
-  var xNaN = _.reduce(xArray, filterNaN , []);
-  var yNaN = _.reduce(yArray, filterNaN , []);
-  var include = _.intersection(xNaN, yNaN);
-  var fX = _.map(include, function(d) {return xArray[d];});
-  var fY = _.map(include, function(d) {return yArray[d];});
-
-  var sumX = _.reduce(fX, sum, 0);
-  var sumY = _.reduce(fY, sum, 0);
-  var sumX2 = _.reduce(fX, sumSquares, 0);
-  var sumY2 = _.reduce(fY, sumSquares, 0);
-  var sumXY = _.reduce(fX, function(m, v, i) {return m + v * fY[i];}, 0);
-
-  var n = fX.length;
-  var ntor = ( ( sumXY ) - ( sumX * sumY / n) );
-  var dtorX = sumX2 - ( sumX * sumX / n);
-  var dtorY = sumY2 - ( sumY * sumY / n);
- 
-  var r = ntor / (Math.sqrt( dtorX * dtorY )); // Pearson ( http://www.stat.wmich.edu/s216/book/node122.html )
-  var m = ntor / dtorX; // y = mx + b
-  var b = ( sumY - m * sumX ) / n;
-
-  // console.log(r, m, b);
-  return {r: r, m: m, b: b};
-}
 
 
 d3.tsv("ratings.tsv", function(error, data) {
@@ -129,9 +99,9 @@ d3.tsv("ratings.tsv", function(error, data) {
       .style("fill", function(d) { return color(d.channel); });
 
   
-  /*trendline
+  /*trendline*/
   var xLabels = d3.extent(data,function (d) {return d.date;})
-  //xScale.domain(xLabels);
+  //var xLabels=[format.parse("6/5/06"), format.parse("7/10/06"), format.parse("6/7/10"), format.parse("7/12/10"),format.parse("6/8/14"), format.parse("7/1/14")];
     
   var xSeries = d3.range(1, xLabels.length+1);
   var ySeries = d3.extent(data,function(d) { return d.value; });
@@ -154,7 +124,7 @@ d3.tsv("ratings.tsv", function(error, data) {
 		.attr("x2", function(d) { return x(d[2]); })
 		.attr("y2", function(d) { return y(d[3]); })
 		.attr("stroke", "black")
-		.attr("stroke-width", 1);*/
+		.attr("stroke-width", 1);
   
   var legend = svg.selectAll(".legend")
       .data(color.domain().reverse())
@@ -176,5 +146,27 @@ d3.tsv("ratings.tsv", function(error, data) {
       .text(function(d) { return d; });
 
 });
+function leastSquares(xSeries, ySeries) {
+		var reduceSumFunc = function(prev, cur) { return prev + cur; };
+		
+		var xBar = xSeries.reduce(reduceSumFunc) * 1.0 / xSeries.length;
+		var yBar = ySeries.reduce(reduceSumFunc) * 1.0 / ySeries.length;
+
+		var ssXX = xSeries.map(function(d) { return Math.pow(d - xBar, 2); })
+			.reduce(reduceSumFunc);
+		
+		var ssYY = ySeries.map(function(d) { return Math.pow(d - yBar, 2); })
+			.reduce(reduceSumFunc);
+			
+		var ssXY = xSeries.map(function(d, i) { return (d - xBar) * (ySeries[i] - yBar); })
+			.reduce(reduceSumFunc);
+			
+		var slope = ssXY / ssXX;
+		var intercept = yBar - (xBar * slope);
+		var rSquare = Math.pow(ssXY, 2) / (ssXX * ssYY);
+		
+		return [slope, intercept, rSquare];
+	}
 
 </script>
+</body>
